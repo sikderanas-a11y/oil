@@ -1,0 +1,1589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>X Ceramics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+/* ════════════════════════════════════════
+   SHARED DESIGN TOKENS
+════════════════════════════════════════ */
+:root {
+  /* dark (entry form) */
+  --dbg:     #0e1117;
+  --ds1:     #181c27;
+  --ds2:     #1e2235;
+  --dborder: #2a2f45;
+  --dtext:   #e2e6f0;
+  --dt2:     #7b82a0;
+  /* light (dashboard) */
+  --lbg:     #f0f2f5;
+  --lcard:   #ffffff;
+  --lborder: #e4e8f0;
+  --ltext:   #1a1d2e;
+  --lt2:     #6b7280;
+  --lt3:     #9ca3af;
+  /* shared accents */
+  --accent:  #f59e0b;
+  --adim:    #f59e0b1a;
+  --blue:    #2563eb;
+  --green:   #16a34a;
+  --green-d: #22c55e;
+  --red:     #dc2626;
+  --red-d:   #ef4444;
+  --orange:  #ea580c;
+  --yellow:  #ca8a04;
+  --purple:  #7c3aed;
+  --purple-d:#a855f7;
+  /* dims */
+  --accent-dim:  #eff6ff;
+  --green-dim:   #f0fdf4;
+  --red-dim:     #fef2f2;
+  --orange-dim:  #fff7ed;
+  --yellow-dim:  #fefce8;
+  --purple-dim:  #f5f3ff;
+  /* misc */
+  --r:    10px;
+  --rs:   7px;
+  --ease: 0.15s ease;
+  --font: 'Inter', system-ui, sans-serif;
+  --nav-h: 64px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 15px; -webkit-tap-highlight-color: transparent; }
+body {
+  font-family: var(--font);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+button { cursor: pointer; font-family: inherit; border: none; background: none; }
+select { font-family: inherit; }
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; }
+
+/* ════════════════════════════════════════
+   APP SHELL — two screens
+════════════════════════════════════════ */
+#screen-dashboard { display: block; }
+#screen-entry     { display: none; }
+
+/* ════════════════════════════════════════
+   ─── DASHBOARD STYLES ───
+════════════════════════════════════════ */
+#screen-dashboard {
+  background: var(--lbg);
+  color: var(--ltext);
+  padding-bottom: calc(var(--nav-h) + 16px);
+}
+
+/* TOP HEADER */
+.top-header {
+  background: var(--lcard);
+  border-bottom: 1px solid var(--lborder);
+  padding: 12px 16px 10px;
+  position: sticky; top: 0; z-index: 100;
+}
+.header-row1 { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.header-brand { display: flex; align-items: center; gap: 10px; }
+.header-logo {
+  width: 38px; height: 38px; border-radius: 10px;
+  background: var(--blue); display: flex; align-items: center;
+  justify-content: center; color: #fff; font-size: 18px;
+}
+.header-title { font-size: 1.05rem; font-weight: 700; }
+.header-sub { font-size: .7rem; color: var(--lt2); margin-top: 1px; }
+.header-actions { display: flex; gap: 8px; }
+.btn-new-entry-top {
+  background: transparent; border: 1.5px solid var(--blue);
+  color: var(--blue); padding: 7px 14px; border-radius: 8px;
+  font-size: .8rem; font-weight: 600;
+}
+.btn-refresh-top {
+  width: 36px; height: 36px; background: var(--blue);
+  border-radius: 8px; color: #fff; font-size: 1rem;
+  display: flex; align-items: center; justify-content: center;
+}
+.status-bar { display: flex; align-items: center; gap: 6px; font-size: .72rem; color: var(--lt2); }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+
+/* EXPORT BAR */
+.export-bar {
+  background: var(--lcard); border-bottom: 1px solid var(--lborder);
+  padding: 10px 16px; display: flex; align-items: center; gap: 10px;
+}
+.export-label { font-size: .7rem; font-weight: 700; color: var(--lt2); text-transform: uppercase; letter-spacing: .06em; }
+.ebtn {
+  display: flex; align-items: center; gap: 5px;
+  padding: 6px 12px; border-radius: 8px; font-size: .78rem; font-weight: 600;
+  border: 1.5px solid; transition: opacity .15s;
+}
+.ebtn:active { opacity: .7; }
+.ebtn-csv { color: var(--green); border-color: var(--green); }
+.ebtn-pdf { color: var(--red); border-color: var(--red); }
+.ebtn-new2 { color: var(--blue); border-color: var(--blue); margin-left: auto; }
+
+/* PAGES */
+.dash-page { display: none; padding: 14px 14px 0; max-width: 500px; margin: 0 auto; }
+.dash-page.active { display: block; }
+
+/* SEC TITLE */
+.sec-title {
+  font-size: .75rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--lt2); margin-bottom: 12px;
+  display: flex; align-items: center; gap: 7px;
+}
+.sec-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+/* CARDS */
+.card { background: var(--lcard); border: 1px solid var(--lborder); border-radius: var(--r); padding: 16px; margin-bottom: 12px; }
+
+/* STAT GRID */
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.stat-card {
+  background: var(--lcard); border: 1px solid var(--lborder);
+  border-radius: var(--rs); padding: 14px; border-left: 4px solid transparent;
+}
+.stat-label { font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--lt2); margin-bottom: 6px; }
+.stat-value { font-size: 1.55rem; font-weight: 800; line-height: 1; }
+.stat-sub { font-size: .68rem; color: var(--lt2); margin-top: 4px; }
+
+/* ALERT PILLS */
+.alert-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.alert-pill {
+  display: flex; flex-direction: column; align-items: center;
+  background: var(--lcard); border: 1px solid var(--lborder);
+  border-radius: var(--rs); padding: 10px 14px; flex: 1; min-width: 70px;
+}
+.pill-count { font-size: 1.4rem; font-weight: 800; }
+.pill-label { font-size: .62rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; margin-top: 2px; }
+
+/* ALERT CARDS */
+.alert-card {
+  background: var(--lcard); border-radius: var(--r);
+  border: 1px solid var(--lborder); border-left: 4px solid transparent;
+  padding: 14px; margin-bottom: 10px;
+}
+.alert-card.critical { border-left-color: var(--red); background: var(--red-dim); }
+.alert-card.high { border-left-color: var(--orange); background: var(--orange-dim); }
+.alert-card.medium { border-left-color: var(--yellow); background: var(--yellow-dim); }
+.alert-card.duesoon { border-left-color: var(--blue); background: var(--accent-dim); }
+.alert-rank { font-size: .65rem; font-weight: 700; color: var(--lt2); margin-bottom: 2px; }
+.alert-veh { font-size: .95rem; font-weight: 700; }
+.alert-detail { font-size: .78rem; color: var(--lt2); margin-top: 2px; }
+.alert-footer { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.severity-badge {
+  font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+  padding: 3px 9px; border-radius: 5px;
+}
+.badge-critical { background: #fca5a5; color: #7f1d1d; }
+.badge-high { background: #fed7aa; color: #7c2d12; }
+.badge-medium { background: #fef08a; color: #713f12; }
+.badge-duesoon { background: #bfdbfe; color: #1e3a8a; }
+.badge-ok { background: #bbf7d0; color: #14532d; }
+.btn-action {
+  background: var(--red); color: #fff; padding: 6px 14px;
+  border-radius: 7px; font-size: .78rem; font-weight: 700;
+  display: flex; align-items: center; gap: 5px;
+}
+.btn-action.high { background: var(--orange); }
+.btn-action.medium { background: var(--yellow); }
+.btn-action.duesoon { background: var(--blue); }
+
+/* FILTERS */
+.filter-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.fselect {
+  background: var(--lcard); border: 1px solid var(--lborder);
+  border-radius: var(--rs); color: var(--ltext); padding: 8px 12px;
+  font-size: .8rem; flex: 1; min-width: 120px;
+}
+
+/* VEHICLE CARDS */
+.veh-card {
+  background: var(--lcard); border: 1px solid var(--lborder);
+  border-radius: var(--r); padding: 16px; margin-bottom: 10px;
+}
+.veh-name { font-size: 1.05rem; font-weight: 700; }
+.veh-sub { font-size: .72rem; color: var(--lt2); margin-top: 2px; }
+.veh-oil-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0; }
+.veh-oil-item { font-size: .75rem; }
+.veh-oil-label { color: var(--lt2); }
+.veh-oil-val { font-weight: 600; }
+.veh-next-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.veh-next-item { font-size: .7rem; padding: 4px 9px; border-radius: 6px; font-weight: 600; }
+.btn-veh-entry {
+  width: 100%; background: var(--accent-dim); color: var(--blue);
+  border: 1.5px solid var(--blue); border-radius: 8px;
+  padding: 9px; font-size: .82rem; font-weight: 600; margin-top: 10px;
+}
+
+/* PREDICT CARDS */
+.pred-card { background: var(--lcard); border: 1px solid var(--lborder); border-radius: var(--r); padding: 14px; margin-bottom: 10px; }
+.pred-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.pred-veh { font-size: .95rem; font-weight: 700; }
+.pred-meter { font-size: .7rem; color: var(--lt2); margin-top: 2px; }
+.pred-table { width: 100%; border-collapse: collapse; }
+.pred-table td { padding: 5px 4px; font-size: .77rem; border-bottom: 1px solid var(--lborder); }
+.pred-table tr:last-child td { border-bottom: none; }
+.pred-table .pl { color: var(--lt2); }
+
+/* CHARTS */
+.chart-wrap { background: var(--lcard); border: 1px solid var(--lborder); border-radius: var(--r); padding: 16px; margin-bottom: 12px; }
+.chart-title { font-size: .82rem; font-weight: 700; margin-bottom: 12px; }
+.chart-canvas { position: relative; height: 200px; }
+
+/* UNUSUAL */
+.unusual-card {
+  background: var(--purple-dim); border: 1px solid #c4b5fd;
+  border-radius: var(--rs); padding: 12px; margin-bottom: 8px;
+  border-left: 4px solid var(--purple);
+}
+
+/* BOTTOM NAV */
+#bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: var(--lcard); border-top: 1px solid var(--lborder);
+  height: var(--nav-h); display: flex; z-index: 200;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.nav-item {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 4px;
+  color: var(--lt3); font-size: .62rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .04em; transition: color .15s;
+}
+.nav-item.active { color: var(--blue); }
+.nav-icon { font-size: 1.35rem; }
+.nav-item.add-btn .nav-icon {
+  width: 50px; height: 50px; background: var(--accent);
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 1.5rem; margin-top: -20px;
+  box-shadow: 0 4px 16px rgba(245,158,11,.45);
+}
+.nav-badge {
+  position: absolute; top: 8px; right: calc(50% - 24px);
+  background: var(--red); color: #fff; border-radius: 20px;
+  font-size: .55rem; font-weight: 800; padding: 1px 5px; min-width: 18px;
+  text-align: center;
+}
+.nav-item { position: relative; }
+
+/* MISC */
+.section-count { font-size: .72rem; color: var(--lt2); margin-bottom: 10px; }
+.empty-state { text-align: center; padding: 30px 20px; color: var(--lt2); font-size: .85rem; }
+
+/* LOADING */
+#loading-overlay {
+  position: fixed; inset: 0; background: var(--lbg);
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; z-index: 999; gap: 16px;
+}
+.spinner {
+  width: 40px; height: 40px; border: 3px solid var(--lborder);
+  border-top-color: var(--blue); border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: .85rem; color: var(--lt2); font-weight: 500; }
+
+/* TOAST (shared) */
+#toast {
+  position: fixed; bottom: calc(var(--nav-h) + 14px); left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  border-radius: 30px; padding: 11px 22px; font-size: .83rem; font-weight: 600;
+  display: flex; align-items: center; gap: 8px;
+  box-shadow: 0 8px 32px #0003; z-index: 999;
+  transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+  white-space: nowrap; max-width: 90vw;
+}
+#toast.show { transform: translateX(-50%) translateY(0); }
+#toast.t-dark { background: var(--ds1); border: 1px solid var(--dborder); color: var(--dtext); }
+#toast.t-light { background: var(--ltext); color: #fff; }
+#toast.t-success { border-color: var(--green-d) !important; }
+#toast.t-error   { border-color: var(--red-d) !important; }
+.tdot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+#toast.t-success .tdot { background: var(--green-d); }
+#toast.t-error   .tdot { background: var(--red-d); }
+
+/* ════════════════════════════════════════
+   ─── ENTRY FORM STYLES ───
+════════════════════════════════════════ */
+#screen-entry {
+  background: var(--dbg);
+  color: var(--dtext);
+  min-height: 100vh;
+  padding-bottom: 80px;
+}
+
+/* ENTRY HEADER */
+.entry-header {
+  background: var(--ds1); border-bottom: 1px solid var(--dborder);
+  padding: 14px 18px; display: flex; align-items: center; gap: 12px;
+  position: sticky; top: 0; z-index: 50;
+}
+.entry-back {
+  width: 36px; height: 36px; border-radius: 8px;
+  background: var(--ds2); border: 1px solid var(--dborder);
+  color: var(--dt2); font-size: 1.1rem; display: flex;
+  align-items: center; justify-content: center; flex-shrink: 0;
+  transition: border-color var(--ease), color var(--ease);
+}
+.entry-back:hover { border-color: var(--accent); color: var(--accent); }
+.entry-logo {
+  width: 36px; height: 36px; background: var(--accent); border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
+}
+.entry-header h1 { font-size: 1rem; font-weight: 700; }
+.entry-header p { font-size: .72rem; color: var(--dt2); margin-top: 2px; }
+
+/* ENTRY PAGE INNER */
+.entry-page { max-width: 500px; margin: 0 auto; padding: 18px 14px; }
+
+/* SECTION CARD */
+.scard {
+  background: var(--ds1); border: 1px solid var(--dborder);
+  border-radius: var(--r); padding: 18px; margin-bottom: 12px;
+}
+.stitle {
+  font-size: .68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .1em; color: var(--dt2); margin-bottom: 14px;
+  display: flex; align-items: center; gap: 7px;
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+/* FIELD */
+.flabel {
+  font-size: .66rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--dt2); margin-bottom: 6px;
+  display: flex; align-items: center; gap: 4px;
+}
+.req { color: var(--red-d); }
+
+/* TEXT INPUT */
+.tinput {
+  background: var(--ds2); border: 1px solid var(--dborder);
+  border-radius: var(--rs); color: var(--dtext); font-family: var(--font);
+  font-size: .9rem; padding: 11px 14px; width: 100%;
+  transition: border-color var(--ease);
+}
+.tinput:focus { outline: none; border-color: var(--accent); }
+.tinput::placeholder { color: var(--dt2); font-size: .83rem; }
+
+/* DATE TRIGGER */
+.date-wrap { position: relative; }
+.date-trigger {
+  background: var(--ds2); border: 1px solid var(--dborder); border-radius: var(--rs);
+  color: var(--dtext); font-family: var(--font); font-size: .95rem; font-weight: 600;
+  padding: 11px 14px; width: 100%; display: flex; align-items: center;
+  justify-content: space-between; cursor: pointer; transition: border-color var(--ease);
+  user-select: none;
+}
+.date-trigger:hover, .date-trigger.open { border-color: var(--accent); }
+.date-trigger svg { color: var(--dt2); flex-shrink: 0; }
+
+/* CALENDAR */
+.cal-popup {
+  display: none; position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+  z-index: 200; background: var(--ds1); border: 1px solid var(--dborder);
+  border-radius: var(--r); box-shadow: 0 16px 48px #00000077; padding: 14px;
+}
+.cal-popup.open { display: block; }
+.cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.cal-title { font-size: .9rem; font-weight: 700; }
+.cal-nav {
+  background: var(--ds2); border: 1px solid var(--dborder); color: var(--dt2);
+  width: 30px; height: 30px; border-radius: 6px; font-size: .9rem;
+  display: flex; align-items: center; justify-content: center; transition: var(--ease);
+}
+.cal-nav:hover { border-color: var(--accent); color: var(--accent); }
+.cal-dow {
+  display: grid; grid-template-columns: repeat(7,1fr); text-align: center;
+  font-size: .62rem; font-weight: 700; text-transform: uppercase;
+  color: var(--dt2); letter-spacing: .04em; margin-bottom: 5px;
+}
+.cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; }
+.cal-day {
+  aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+  font-size: .8rem; border-radius: 6px; cursor: pointer; color: var(--dtext);
+  transition: background var(--ease); border: none; background: transparent;
+  font-family: var(--font);
+}
+.cal-day:hover { background: var(--ds2); }
+.cal-day.other { color: var(--dt2); opacity: .35; }
+.cal-day.today { color: var(--blue); font-weight: 700; }
+.cal-day.sel { background: var(--accent) !important; color: #000; font-weight: 700; }
+.cal-foot {
+  display: flex; justify-content: space-between;
+  margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--dborder);
+}
+.cal-fbtn {
+  font-size: .8rem; font-weight: 600; color: var(--blue);
+  padding: 3px 8px; border-radius: 4px; transition: background var(--ease);
+  font-family: var(--font); background: none; border: none; cursor: pointer;
+}
+.cal-fbtn:hover { background: var(--ds2); }
+
+/* VEHICLE */
+.vehicle-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px; }
+.vehicle-preview {
+  background: var(--ds2); border-radius: var(--rs); padding: 10px 14px;
+  margin-top: 6px; font-size: .82rem; color: var(--dt2); min-height: 40px;
+  display: flex; align-items: center; gap: 8px;
+  border: 1px solid transparent; transition: border-color var(--ease), color var(--ease);
+}
+.vehicle-preview.ok { color: var(--green-d); border-color: #22c55e33; }
+.vehicle-hint { font-size: .68rem; color: var(--dt2); margin-top: 6px; line-height: 1.6; }
+
+/* OIL TABLE */
+.oil-table { width: 100%; border-collapse: collapse; }
+.oil-table tr { border-bottom: 1px solid var(--dborder); }
+.oil-table tr:last-child { border-bottom: none; }
+.oil-table td { padding: 10px 4px; vertical-align: middle; }
+.oil-name {
+  font-size: .78rem; font-weight: 600; color: var(--dtext);
+  white-space: nowrap; padding-right: 10px !important; min-width: 120px;
+}
+.qstrip { display: flex; gap: 6px; flex-wrap: nowrap; align-items: center; }
+.qbtn {
+  min-width: 42px; height: 36px; padding: 0 10px; border-radius: 6px;
+  border: 1px solid var(--dborder); background: var(--ds2);
+  color: var(--dt2); font-family: var(--font); font-size: .85rem; font-weight: 600;
+  transition: border-color var(--ease), color var(--ease), background var(--ease);
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+}
+.qbtn:hover { border-color: var(--accent); color: var(--accent); }
+.qbtn.sel { background: var(--adim); border-color: var(--accent); color: var(--accent); }
+.qcustom {
+  width: 64px; height: 36px; background: var(--ds2); border: 1px solid var(--dborder);
+  border-radius: 6px; color: var(--dtext); font-family: var(--font);
+  font-size: .82rem; text-align: center; padding: 0 8px;
+  transition: border-color var(--ease); flex-shrink: 0;
+}
+.qcustom:focus { outline: none; border-color: var(--accent); }
+.qcustom::placeholder { color: var(--dt2); font-size: .75rem; }
+
+/* PURPOSE */
+.purpose-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
+.purpose-btn {
+  padding: 14px 10px; border-radius: var(--rs);
+  border: 1px solid var(--dborder); background: var(--ds2);
+  color: var(--dt2); font-family: var(--font); font-size: .85rem; font-weight: 600;
+  transition: border-color var(--ease), color var(--ease), background var(--ease);
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  text-align: center; line-height: 1.3;
+}
+.purpose-btn .p-icon { font-size: 1.4rem; }
+.purpose-btn:hover { border-color: var(--accent); color: var(--accent); }
+.purpose-btn.sel-scheduled { background: rgba(34,197,94,.08); border-color: var(--green-d); color: var(--green-d); }
+.purpose-btn.sel-loss { background: rgba(239,68,68,.08); border-color: var(--red-d); color: var(--red-d); }
+
+/* METER */
+.meter-wrap { position: relative; }
+.meter-unit {
+  position: absolute; right: 13px; top: 50%; transform: translateY(-50%);
+  font-size: .68rem; font-weight: 700; color: var(--dt2);
+  text-transform: uppercase; letter-spacing: .06em; pointer-events: none;
+}
+.tinput.mtr { padding-right: 72px; }
+
+/* SAVE BTN */
+.btn-save {
+  width: 100%; background: var(--accent); color: #000; font-weight: 700;
+  font-size: .95rem; border: none; border-radius: var(--rs); padding: 14px;
+  transition: opacity var(--ease), transform var(--ease);
+  font-family: var(--font); letter-spacing: .01em;
+}
+.btn-save:hover { opacity: .9; transform: translateY(-1px); }
+.btn-save:active { transform: translateY(0); }
+.btn-save:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+@media (max-width: 440px) {
+  .oil-name { min-width: 100px; font-size: .72rem; }
+  .qbtn { min-width: 36px; height: 32px; font-size: .8rem; }
+  .qcustom { width: 54px; height: 32px; }
+  .purpose-btn { padding: 12px 8px; font-size: .8rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     SHARED TOAST
+══════════════════════════════════════ -->
+<div id="toast"><span class="tdot"></span><span id="toastMsg"></span></div>
+
+<!-- ══════════════════════════════════════
+     LOADING OVERLAY
+══════════════════════════════════════ -->
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Loading fleet data…</div>
+</div>
+
+<!-- ══════════════════════════════════════
+     SCREEN: DASHBOARD
+══════════════════════════════════════ -->
+<div id="screen-dashboard">
+
+  <!-- TOP HEADER -->
+  <div class="top-header">
+    <div class="header-row1">
+      <div class="header-brand">
+        <div class="header-logo">⚙️</div>
+        <div>
+          <div class="header-title">Oil Consumption</div>
+          
+        </div>
+      </div>
+      <div class="header-actions">
+        
+        <button class="btn-refresh-top" onclick="refreshData()" title="Refresh">↻</button>
+      </div>
+    </div>
+    <div class="status-bar">
+      <div class="status-dot"></div>
+      <span id="status-text">Loading…</span>
+    </div>
+  </div>
+
+  <!-- EXPORT BAR -->
+  <div class="export-bar">
+    <span class="export-label">Export</span>
+    <button class="ebtn ebtn-csv" onclick="exportCSV()">📄 CSV</button>
+    <button class="ebtn ebtn-pdf" onclick="exportPDF()">📕 PDF</button>
+    
+  </div>
+
+  <!-- ── PAGE: OVERVIEW ── -->
+  <div class="dash-page active" id="page-overview">
+    <div class="stat-grid">
+      <div class="stat-card" style="border-left-color:var(--blue)">
+        <div class="stat-label">Total Vehicles</div>
+        <div class="stat-value" id="stat-vehicles" style="color:var(--blue)">–</div>
+        <div class="stat-sub">unique</div>
+      </div>
+      <div class="stat-card" style="border-left-color:var(--green)">
+        <div class="stat-label">Total Records</div>
+        <div class="stat-value" id="stat-records" style="color:var(--green)">–</div>
+        <div class="stat-sub">all entries</div>
+      </div>
+      <div class="stat-card" style="border-left-color:var(--orange)">
+        <div class="stat-label">Total Oil (LTR)</div>
+        <div class="stat-value" id="stat-oil" style="color:var(--orange)">–</div>
+        <div class="stat-sub">all types</div>
+      </div>
+      <div class="stat-card" style="border-left-color:var(--purple)">
+        <div class="stat-label">Est. Cost</div>
+        <div class="stat-value" id="stat-cost" style="color:var(--purple);font-size:1.1rem">–</div>
+        <div class="stat-sub">৳ total</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:120px">
+          <div class="stat-label">Highest Consuming</div>
+          <div style="font-size:.92rem;font-weight:700;margin-top:4px" id="stat-highest">–</div>
+        </div>
+        <div style="flex:1;min-width:120px">
+          <div class="stat-label">Most Active</div>
+          <div style="font-size:.92rem;font-weight:700;margin-top:4px" id="stat-active">–</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-title"><span class="sec-dot" style="background:var(--red)"></span>Alert Summary</div>
+    <div class="alert-pills">
+      <div class="alert-pill" style="border-top:3px solid var(--red)">
+        <div class="pill-count" id="pill-critical" style="color:var(--red)">0</div>
+        <div class="pill-label" style="color:var(--red)">Critical</div>
+      </div>
+      <div class="alert-pill" style="border-top:3px solid var(--orange)">
+        <div class="pill-count" id="pill-high" style="color:var(--orange)">0</div>
+        <div class="pill-label" style="color:var(--orange)">High</div>
+      </div>
+      <div class="alert-pill" style="border-top:3px solid var(--yellow)">
+        <div class="pill-count" id="pill-medium" style="color:var(--yellow)">0</div>
+        <div class="pill-label" style="color:var(--yellow)">Medium</div>
+      </div>
+      <div class="alert-pill" style="border-top:3px solid var(--blue)">
+        <div class="pill-count" id="pill-duesoon" style="color:var(--blue)">0</div>
+        <div class="pill-label" style="color:var(--blue)">Due Soon</div>
+      </div>
+    </div>
+
+    <div class="sec-title"><span class="sec-dot" style="background:var(--purple)"></span>Unusual Consumption</div>
+    <div id="unusual-list"><div class="empty-state">No unusual consumption detected.</div></div>
+
+    <div class="chart-wrap">
+      <div class="chart-title">Monthly Oil Consumption</div>
+      <div class="filter-row" style="margin-bottom:10px">
+        <select class="fselect" id="monthly-vehicle-filter" onchange="renderMonthlyChart()">
+          <option value="">All Vehicles</option>
+        </select>
+      </div>
+      <div class="chart-canvas"><canvas id="monthlyChart"></canvas></div>
+    </div>
+
+    <div class="chart-wrap">
+      <div class="chart-title">Consumption by Vehicle</div>
+      <div class="filter-row" style="margin-bottom:10px">
+        <select class="fselect" id="vehicle-chart-select" onchange="renderVehicleChart()">
+          <option value="">Select Vehicle</option>
+        </select>
+      </div>
+      <div class="chart-canvas"><canvas id="vehicleChart"></canvas></div>
+    </div>
+  </div><!-- /page-overview -->
+
+  <!-- ── PAGE: ALERTS ── -->
+  <div class="dash-page" id="page-alerts">
+    <div style="font-size:1.05rem;font-weight:700;margin-bottom:12px">Active Alerts</div>
+    <div class="filter-row">
+      <select class="fselect" id="af-vehicle" onchange="renderAlerts()">
+        <option value="">All Vehicles</option>
+      </select>
+    </div>
+    <div class="filter-row">
+      <select class="fselect" id="af-oil" onchange="renderAlerts()">
+        <option value="">All Oil Types</option>
+        <option>Hydraulic Oil</option><option>Engine Oil</option><option>Gear Oil</option>
+        <option>Transmission Oil</option><option>Brake Oil</option><option>Grease</option>
+      </select>
+      <select class="fselect" id="af-severity" onchange="renderAlerts()">
+        <option value="">All Severities</option>
+        <option>Critical</option><option>High</option><option>Medium</option><option>Due Soon</option>
+      </select>
+    </div>
+    <div id="alert-count" class="section-count"></div>
+    <div id="alert-list"></div>
+  </div>
+
+  <!-- ── PAGE: VEHICLES ── -->
+  <div class="dash-page" id="page-vehicles">
+    <div style="font-size:1.05rem;font-weight:700;margin-bottom:12px">Vehicle Consumption Profiles</div>
+    <div class="filter-row">
+      <select class="fselect" id="vf-type" onchange="renderVehicles()">
+        <option value="">All Vehicles</option>
+      </select>
+      <select class="fselect" id="vf-status" onchange="renderVehicles()">
+        <option value="">Any Due Status</option>
+        <option>Critical</option><option>High</option><option>Medium</option><option>OK</option>
+      </select>
+    </div>
+    <div id="veh-count" class="section-count"></div>
+    <div id="veh-list"></div>
+  </div>
+
+  <!-- ── PAGE: PREDICT ── -->
+  <div class="dash-page" id="page-predict">
+    <div style="font-size:1.05rem;font-weight:700;margin-bottom:4px">Next Maintenance Predictions</div>
+    <div style="font-size:.75rem;color:var(--lt2);margin-bottom:12px">Based on average service intervals from sheet data</div>
+    <div class="filter-row">
+      <select class="fselect" id="pf-vehicle" onchange="renderPredict()">
+        <option value="">All Vehicles</option>
+      </select>
+      <select class="fselect" id="pf-status" onchange="renderPredict()">
+        <option value="">All Statuses</option>
+        <option>Critical</option><option>High</option><option>Medium</option><option>OK</option>
+      </select>
+    </div>
+    <div id="pred-count" class="section-count"></div>
+    <div id="pred-list"></div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav id="bottom-nav">
+    <button class="nav-item active" id="nav-overview" onclick="switchTab('overview')">
+      <div class="nav-icon">ℹ️</div>
+      <span>Overview</span>
+    </button>
+    <button class="nav-item" id="nav-alerts" onclick="switchTab('alerts')">
+      <div class="nav-icon">⚠️</div>
+      <span>Alerts</span>
+      <div class="nav-badge" id="alert-badge" style="display:none">0</div>
+    </button>
+    <button class="nav-item add-btn" id="nav-add" onclick="goToEntry()">
+      <div class="nav-icon">➕</div>
+      <span>Add</span>
+    </button>
+    <button class="nav-item" id="nav-vehicles" onclick="switchTab('vehicles')">
+      <div class="nav-icon">🚗</div>
+      <span>Vehicles</span>
+    </button>
+    <button class="nav-item" id="nav-predict" onclick="switchTab('predict')">
+      <div class="nav-icon">🔮</div>
+      <span>Predict</span>
+    </button>
+  </nav>
+</div><!-- /screen-dashboard -->
+
+<!-- ══════════════════════════════════════
+     SCREEN: ENTRY FORM
+══════════════════════════════════════ -->
+<div id="screen-entry">
+  <div class="entry-header">
+    <button class="entry-back" onclick="goToDashboard()" title="Back to dashboard">←</button>
+    <div class="entry-logo">🛢️</div>
+    <div>
+      <h1>Oil Consumption Tracker</h1>
+      <p>MCBL Fleet Management</p>
+    </div>
+  </div>
+
+  <div class="entry-page">
+    <!-- DATE -->
+    <div class="scard">
+      <div class="stitle"><span class="dot" style="background:#ef4444"></span>Date</div>
+      <div class="flabel">DATE <span class="req">*</span></div>
+      <div class="date-wrap">
+        <div class="date-trigger" id="dateTrigger" onclick="toggleCal()">
+          <span id="dateTriggerText">Select date</span>
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+          </svg>
+        </div>
+        <input type="hidden" id="dateInput"/>
+        <div class="cal-popup" id="calPopup">
+          <div class="cal-header">
+            <button class="cal-nav" onclick="calShift(-1)">&#8593;</button>
+            <span class="cal-title" id="calTitle"></span>
+            <button class="cal-nav" onclick="calShift(1)">&#8595;</button>
+          </div>
+          <div class="cal-dow"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
+          <div class="cal-grid" id="calGrid"></div>
+          <div class="cal-foot">
+            <button class="cal-fbtn" onclick="calClear()">Clear</button>
+            <button class="cal-fbtn" onclick="calToday()">Today</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VEHICLE -->
+    <div class="scard">
+      <div class="stitle"><span class="dot" style="background:#22c55e"></span>Vehicle</div>
+      <div class="vehicle-row">
+        <div>
+          <div class="flabel">CAR NAME <span class="req">*</span></div>
+          <input class="tinput" id="carNameInput" type="text"
+                 placeholder="e.g. f5, dt2, ex1…"
+                 autocomplete="off" oninput="onVehicleInput()"/>
+        </div>
+        <div>
+          <div class="flabel">CAR NUMBER <span class="req">*</span></div>
+          <input class="tinput" id="carNumInput" type="text"
+                 placeholder="Auto / manual"
+                 autocomplete="off" oninput="onNumInput()"/>
+        </div>
+      </div>
+      <div class="vehicle-preview" id="vehiclePreview">
+        <span style="color:var(--dt2);font-size:.9rem">→</span>
+        <span id="vehiclePreviewText">type a code above</span>
+      </div>
+      <div class="vehicle-hint">
+        f=Forklift · p=Payloader · dt=Dump Truck · ex=Excavator · t=Trolley · r=Reach Truck · sc=School Car · wp=Water Pump · ph=Pickup · hh=Human Hauler
+      </div>
+    </div>
+
+    <!-- PURPOSE -->
+    <div class="scard">
+      <div class="stitle"><span class="dot" style="background:#3b82f6"></span>Purpose <span style="color:var(--red-d);font-weight:700">*</span></div>
+      <p style="font-size:.75rem;color:var(--dt2);margin-bottom:12px">Why is oil being issued?</p>
+      <div class="purpose-grid">
+        <button class="purpose-btn" id="btn-scheduled" onclick="selectPurpose('Scheduled')">
+          <span class="p-icon">🔧</span>
+          <span>Scheduled</span>
+          <span style="font-size:.68rem;font-weight:400;color:inherit;opacity:.75">Routine maintenance</span>
+        </button>
+        <button class="purpose-btn" id="btn-loss" onclick="selectPurpose('Loss Oil')">
+          <span class="p-icon">⚠️</span>
+          <span>Loss Oil</span>
+          <span style="font-size:.68rem;font-weight:400;color:inherit;opacity:.75">Leak / unplanned use</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- OIL QUANTITIES -->
+    <div class="scard">
+      <div class="stitle"><span class="dot" style="background:#f59e0b"></span>Oil Consumption</div>
+      <p style="font-size:.75rem;color:var(--dt2);margin-bottom:14px">Select quantity (litres) for each oil type used. Leave at 0 if not used.</p>
+      <table class="oil-table" id="oilTable"></table>
+    </div>
+
+    <!-- METER -->
+    <div class="scard">
+      <div class="stitle"><span class="dot" style="background:#a855f7"></span>Meter Reading</div>
+      <div class="flabel">CURRENT READING <span class="req">*</span></div>
+      <div class="meter-wrap">
+        <input class="tinput mtr" type="number" id="meterInput"
+               placeholder="0" min="0" step="1"/>
+        <span class="meter-unit">HRS / KM</span>
+      </div>
+    </div>
+
+    <!-- SUBMIT -->
+    <button class="btn-save" id="saveBtn" onclick="submitForm()">✓ Save Record</button>
+  </div>
+</div><!-- /screen-entry -->
+
+<!-- ══════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════ -->
+<script>
+// ── CONFIGURATION ────────────────────────────────────────────
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbw0HLn0njK4rZh873xjvwfjp_TKQiqO3FzbY3FOT3eg_W3qFp1no6-a94KPt1SygM24/exec';
+const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRaUIVKKfZQ6Ro-LBWboz0qVhAAioUGNJKB3S5vDzq7OX2IW5NHyK_OyGuOSOLjXlopj6mBG5QpoTbw/pub?output=csv';
+const COST_PER_LITER = 200;
+const CURRENCY = '৳';
+
+const OIL_COLS = [
+  { key: 'hydraulic',    label: 'Hydraulic Oil',    col: 3 },
+  { key: 'engine',       label: 'Engine Oil',        col: 4 },
+  { key: 'gear',         label: 'Gear Oil',          col: 5 },
+  { key: 'transmission', label: 'Transmission Oil',  col: 6 },
+  { key: 'brake',        label: 'Brake Oil',         col: 7 },
+  { key: 'grease',       label: 'Grease',            col: 8 },
+];
+const OIL_INTERVALS = {
+  'Hydraulic Oil': 60, 'Engine Oil': 30, 'Gear Oil': 90,
+  'Transmission Oil': 90, 'Brake Oil': 60, 'Grease': 30,
+};
+const QTY_OPTS = [0, 6, 10];
+
+// ── SCREEN SWITCHING ─────────────────────────────────────────
+function goToEntry(vehicleId) {
+  document.getElementById('screen-dashboard').style.display = 'none';
+  document.getElementById('screen-entry').style.display = 'block';
+  document.getElementById('bottom-nav').style.display = 'none';
+  // pre-fill vehicle if provided
+  if (vehicleId) {
+    const parts = vehicleId.split('-');
+    const carName = parts.slice(0,-1).join('-');
+    const carNum  = parts[parts.length-1];
+    document.getElementById('carNameInput').value = carName;
+    document.getElementById('carNumInput').value  = carNum;
+    _parsedCarName = carName;
+    _parsedCarNum  = carNum;
+    updatePreview();
+  }
+  window.scrollTo(0,0);
+  // Set toast style to dark
+  document.getElementById('toast').className = '';
+  initCal();
+}
+
+function goToDashboard() {
+  document.getElementById('screen-entry').style.display = 'none';
+  document.getElementById('screen-dashboard').style.display = 'block';
+  document.getElementById('bottom-nav').style.display = 'flex';
+  window.scrollTo(0,0);
+  // Set toast style to light
+  document.getElementById('toast').className = '';
+}
+
+// ── DASHBOARD STATE ──────────────────────────────────────────
+let allRows = [];
+let vehicles = {};
+let allAlerts = [];
+let monthlyChart = null;
+let vehicleChart = null;
+let lastLoaded = null;
+
+// ── DATA LOADING ─────────────────────────────────────────────
+async function loadSheetData() {
+  try {
+    const res  = await fetch(CSV_URL + '&t=' + Date.now());
+    const text = await res.text();
+    allRows = parseCSV(text);
+    lastLoaded = new Date();
+    calculateDashboard();
+    return true;
+  } catch(e) {
+    showToast('Failed to load data: ' + e.message, 'error');
+    document.getElementById('loading-overlay').style.display = 'none';
+    return false;
+  }
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return [];
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = csvLineParse(lines[i]);
+    if (cols.length < 2) continue;
+    const date    = parseDate(cols[0]);
+    const carName = (cols[1] || '').trim();
+    const carNum  = (cols[2] || '').trim();
+    if (!carName) continue;
+    const vehicleId = carNum ? `${carName}-${carNum}` : carName;
+    rows.push({
+      date, dateRaw: cols[0], carName, carNum, vehicleId,
+      hydraulic:    parseFloat(cols[3]) || 0,
+      engine:       parseFloat(cols[4]) || 0,
+      gear:         parseFloat(cols[5]) || 0,
+      transmission: parseFloat(cols[6]) || 0,
+      brake:        parseFloat(cols[7]) || 0,
+      grease:       parseFloat(cols[8]) || 0,
+      meter:        parseFloat(cols[9]) || 0,
+      totalOil: (parseFloat(cols[3])||0)+(parseFloat(cols[4])||0)+(parseFloat(cols[5])||0)
+               +(parseFloat(cols[6])||0)+(parseFloat(cols[7])||0)+(parseFloat(cols[8])||0),
+    });
+  }
+  rows.sort((a,b) => a.date - b.date);
+  return rows;
+}
+
+function csvLineParse(line) {
+  const result = []; let current = ''; let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQuotes = !inQuotes; }
+    else if (c === ',' && !inQuotes) { result.push(current.trim()); current = ''; }
+    else { current += c; }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+function parseDate(str) {
+  if (!str) return new Date(0);
+  str = str.trim();
+  let d = new Date(str);
+  if (!isNaN(d)) return d;
+  const p = str.split('/');
+  if (p.length === 3) {
+    d = new Date(`${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`);
+    if (!isNaN(d)) return d;
+  }
+  return new Date(0);
+}
+
+function fmtDate(d) {
+  if (!d || isNaN(d)) return 'N/A';
+  return d.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
+}
+
+function daysDiff(d1, d2) { return Math.round((d2 - d1) / 86400000); }
+
+// ── CALCULATE DASHBOARD ──────────────────────────────────────
+function calculateDashboard() {
+  vehicles = {};
+  for (const row of allRows) {
+    if (!vehicles[row.vehicleId]) {
+      vehicles[row.vehicleId] = {
+        id: row.vehicleId, name: row.carName, num: row.carNum, entries: [],
+        totalOil: 0, hydraulic: 0, engine: 0, gear: 0, transmission: 0, brake: 0, grease: 0,
+        lastDate: null, lastMeter: 0, lastByOil: {},
+      };
+    }
+    const v = vehicles[row.vehicleId];
+    v.entries.push(row);
+    v.totalOil += row.totalOil;
+    v.hydraulic += row.hydraulic; v.engine += row.engine; v.gear += row.gear;
+    v.transmission += row.transmission; v.brake += row.brake; v.grease += row.grease;
+    if (!v.lastDate || row.date > v.lastDate) { v.lastDate = row.date; v.lastMeter = row.meter; }
+    for (const oil of OIL_COLS) {
+      if (row[oil.key] > 0) {
+        if (!v.lastByOil[oil.label] || row.date > v.lastByOil[oil.label])
+          v.lastByOil[oil.label] = row.date;
+      }
+    }
+  }
+  generateAlerts();
+  updateSummaryCards();
+  populateFilters();
+  renderOverview();
+  renderAlerts();
+  renderVehicles();
+  renderPredict();
+  document.getElementById('status-text').textContent = `${allRows.length} records · ${lastLoaded.toLocaleTimeString()}`;
+  document.getElementById('loading-overlay').style.display = 'none';
+}
+
+// ── ALERTS ───────────────────────────────────────────────────
+function generateAlerts() {
+  allAlerts = [];
+  const today = new Date(); today.setHours(0,0,0,0);
+  for (const [,v] of Object.entries(vehicles)) {
+    for (const oil of OIL_COLS) {
+      const interval = OIL_INTERVALS[oil.label] || 30;
+      const lastSvc  = v.lastByOil[oil.label];
+      if (!lastSvc) continue;
+      const nextDue  = new Date(lastSvc.getTime() + interval * 86400000);
+      const remaining = daysDiff(today, nextDue);
+      let severity = null;
+      if (remaining < -30) severity = 'critical';
+      else if (remaining < -15) severity = 'high';
+      else if (remaining < 0) severity = 'medium';
+      else if (remaining <= 7) severity = 'duesoon';
+      else continue;
+      allAlerts.push({ vehicleId: v.id, vehicleName: v.id, oilType: oil.label,
+        lastSvc, nextDue, remaining, severity, interval, overdueDays: remaining < 0 ? -remaining : 0 });
+    }
+  }
+  const order = { critical:0, high:1, medium:2, duesoon:3 };
+  allAlerts.sort((a,b) => order[a.severity]-order[b.severity] || b.overdueDays-a.overdueDays);
+  allAlerts.forEach((a,i) => a.rank = i+1);
+  const counts = { critical:0, high:0, medium:0, duesoon:0 };
+  allAlerts.forEach(a => counts[a.severity]++);
+  document.getElementById('pill-critical').textContent = counts.critical;
+  document.getElementById('pill-high').textContent     = counts.high;
+  document.getElementById('pill-medium').textContent   = counts.medium;
+  document.getElementById('pill-duesoon').textContent  = counts.duesoon;
+  const total = allAlerts.length;
+  const badge = document.getElementById('alert-badge');
+  badge.textContent = total > 99 ? '99+' : total;
+  badge.style.display = total > 0 ? 'block' : 'none';
+}
+
+// ── SUMMARY CARDS ────────────────────────────────────────────
+function updateSummaryCards() {
+  const totalOil = allRows.reduce((s,r) => s+r.totalOil, 0);
+  let maxOil = 0, highVeh = '–', maxE = 0, activeVeh = '–';
+  for (const [,v] of Object.entries(vehicles)) {
+    if (v.totalOil > maxOil) { maxOil = v.totalOil; highVeh = v.id; }
+    if (v.entries.length > maxE) { maxE = v.entries.length; activeVeh = v.id; }
+  }
+  document.getElementById('stat-vehicles').textContent = Object.keys(vehicles).length;
+  document.getElementById('stat-records').textContent  = allRows.length;
+  document.getElementById('stat-oil').textContent      = totalOil.toFixed(1);
+  document.getElementById('stat-cost').textContent     = CURRENCY + (totalOil*COST_PER_LITER).toLocaleString();
+  document.getElementById('stat-highest').textContent  = `${highVeh} (${maxOil.toFixed(0)} LTR)`;
+  document.getElementById('stat-active').textContent   = `${activeVeh} (${maxE} entries)`;
+}
+
+// ── FILTERS ──────────────────────────────────────────────────
+function populateFilters() {
+  const vehIds = Object.keys(vehicles).sort();
+  function fillSelect(id, items) {
+    const sel = document.getElementById(id);
+    const cur = sel.value;
+    while (sel.options.length > 1) sel.remove(1);
+    items.forEach(v => sel.add(new Option(v,v)));
+    if (cur) sel.value = cur;
+  }
+  ['monthly-vehicle-filter','vehicle-chart-select','af-vehicle','vf-type','pf-vehicle'].forEach(id => fillSelect(id, vehIds));
+}
+
+// ── OVERVIEW ─────────────────────────────────────────────────
+function renderOverview() {
+  detectUnusual();
+  renderMonthlyChart();
+  renderVehicleChart();
+}
+
+function detectUnusual() {
+  const container = document.getElementById('unusual-list');
+  const unusual = []; const seen = new Set();
+  for (const [,v] of Object.entries(vehicles)) {
+    if (v.entries.length < 2) continue;
+    const avg  = v.totalOil / v.entries.length;
+    const last = v.entries[v.entries.length-1];
+    if (last.totalOil > avg * 1.5 && !seen.has(v.id)) {
+      seen.add(v.id);
+      unusual.push({ vehicle: v.id, consumption: last.totalOil, avg, date: last.date });
+    }
+  }
+  if (unusual.length === 0) {
+    container.innerHTML = '<div class="empty-state">No unusual consumption detected.</div>';
+    return;
+  }
+  container.innerHTML = unusual.map(u => `
+    <div class="unusual-card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:.88rem;font-weight:700">${u.vehicle}</div>
+        <span class="severity-badge badge-critical">Unusual</span>
+      </div>
+      <div style="font-size:.75rem;color:var(--lt2);margin-top:4px">
+        Consumption: <strong>${u.consumption.toFixed(1)} LTR</strong> |
+        Average: ${u.avg.toFixed(1)} LTR | ${fmtDate(u.date)}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── CHARTS ───────────────────────────────────────────────────
+function renderMonthlyChart() {
+  const vFilter = document.getElementById('monthly-vehicle-filter').value;
+  const rows = vFilter ? allRows.filter(r => r.vehicleId===vFilter) : allRows;
+  const monthMap = {};
+  rows.forEach(r => {
+    if (!r.date || isNaN(r.date)) return;
+    const key = `${r.date.getFullYear()}-${String(r.date.getMonth()+1).padStart(2,'0')}`;
+    monthMap[key] = (monthMap[key]||0) + r.totalOil;
+  });
+  const keys   = Object.keys(monthMap).sort();
+  const labels = keys.map(k => { const [y,m]=k.split('-'); return new Date(+y,+m-1,1).toLocaleDateString('en-US',{month:'short',year:'2-digit'}); });
+  const data   = keys.map(k => +monthMap[k].toFixed(2));
+  const ctx = document.getElementById('monthlyChart').getContext('2d');
+  if (monthlyChart) monthlyChart.destroy();
+  monthlyChart = new Chart(ctx, {
+    type:'bar', data:{ labels, datasets:[{ label:'Oil (LTR)', data, backgroundColor:'rgba(37,99,235,0.7)', borderRadius:5, borderSkipped:false }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{ x:{grid:{display:false},ticks:{font:{size:10}}}, y:{grid:{color:'#e4e8f0'},ticks:{font:{size:10}}} } }
+  });
+}
+
+function renderVehicleChart() {
+  const vId = document.getElementById('vehicle-chart-select').value;
+  const ctx  = document.getElementById('vehicleChart').getContext('2d');
+  if (vehicleChart) vehicleChart.destroy();
+  if (!vId) {
+    vehicleChart = new Chart(ctx, { type:'bar', data:{labels:[],datasets:[{label:'Oil (LTR)',data:[]}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}} });
+    return;
+  }
+  const rows = allRows.filter(r => r.vehicleId===vId).slice(-20);
+  vehicleChart = new Chart(ctx, {
+    type:'line', data:{
+      labels: rows.map(r=>fmtDate(r.date)),
+      datasets:[{ label:'Total Oil (LTR)', data:rows.map(r=>r.totalOil),
+        borderColor:'#ea580c', backgroundColor:'rgba(234,88,12,0.1)', fill:true, tension:0.3, pointRadius:4 }]
+    },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{ x:{grid:{display:false},ticks:{font:{size:9},maxRotation:45}}, y:{grid:{color:'#e4e8f0'},ticks:{font:{size:10}}} } }
+  });
+}
+
+// ── RENDER ALERTS ────────────────────────────────────────────
+function renderAlerts() {
+  const vF = document.getElementById('af-vehicle').value;
+  const oF = document.getElementById('af-oil').value;
+  const sF = document.getElementById('af-severity').value.toLowerCase().replace(' ','');
+  let filtered = allAlerts;
+  if (vF) filtered = filtered.filter(a => a.vehicleId===vF);
+  if (oF) filtered = filtered.filter(a => a.oilType===oF);
+  if (sF) filtered = filtered.filter(a => a.severity===sF);
+  document.getElementById('alert-count').textContent = `${filtered.length} alerts`;
+  if (filtered.length===0) { document.getElementById('alert-list').innerHTML='<div class="empty-state">No alerts match filters.</div>'; return; }
+  const groups = {};
+  filtered.forEach(a => { if (!groups[a.severity]) groups[a.severity]=[]; groups[a.severity].push(a); });
+  const sevColors  = { critical:'var(--red)', high:'var(--orange)', medium:'var(--yellow)', duesoon:'var(--blue)' };
+  const badgeClass = { critical:'badge-critical', high:'badge-high', medium:'badge-medium', duesoon:'badge-duesoon' };
+  const actionCls  = { critical:'', high:'high', medium:'medium', duesoon:'duesoon' };
+  let html = '';
+  ['critical','high','medium','duesoon'].forEach(sev => {
+    if (!groups[sev]) return;
+    html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <div style="width:10px;height:10px;border-radius:50%;background:${sevColors[sev]}"></div>
+      <strong style="color:${sevColors[sev]}">${sev==='duesoon'?'Due Soon':'Overdue'} (${groups[sev].length})</strong>
+    </div>`;
+    groups[sev].forEach(a => {
+      const txt = a.remaining<0 ? `Overdue by ~${a.overdueDays} days (every ${a.interval} days)` : `Due in ${a.remaining} days (every ${a.interval} days)`;
+      html += `<div class="alert-card ${sev}">
+        <div class="alert-rank">#${a.rank} · ${a.overdueDays}d overdue</div>
+        <div class="alert-veh">${a.vehicleName} — ${a.oilType}</div>
+        <div class="alert-detail">${txt}</div>
+        <div class="alert-footer">
+          <span class="severity-badge ${badgeClass[sev]}">${sev.toUpperCase()}</span>
+          <button class="btn-action ${actionCls[sev]}" onclick="goToEntry('${a.vehicleId}')">⚡ Take Action</button>
+        </div>
+      </div>`;
+    });
+  });
+  document.getElementById('alert-list').innerHTML = html;
+}
+
+// ── RENDER VEHICLES ──────────────────────────────────────────
+function renderVehicles() {
+  const vF = document.getElementById('vf-type').value;
+  const sF = document.getElementById('vf-status').value;
+  const today = new Date(); today.setHours(0,0,0,0);
+  function getStatus(v) {
+    let worst = 'ok'; const ord = {critical:0,high:1,medium:2,duesoon:3,ok:4};
+    for (const oil of OIL_COLS) {
+      const ls = v.lastByOil[oil.label]; if (!ls) continue;
+      const rem = daysDiff(today, new Date(ls.getTime()+(OIL_INTERVALS[oil.label]||30)*86400000));
+      let s='ok';
+      if (rem<-30) s='critical'; else if (rem<-15) s='high'; else if (rem<0) s='medium'; else if (rem<=7) s='duesoon';
+      if (ord[s]<ord[worst]) worst=s;
+    } return worst;
+  }
+  let vList = Object.values(vehicles).sort((a,b)=>a.id.localeCompare(b.id));
+  if (vF) vList = vList.filter(v=>v.id===vF);
+  if (sF) { const sf=sF.toLowerCase().replace(' ',''); vList=vList.filter(v=>getStatus(v)===sf); }
+  document.getElementById('veh-count').textContent = `${vList.length} vehicles`;
+  if (!vList.length) { document.getElementById('veh-list').innerHTML='<div class="empty-state">No vehicles match filters.</div>'; return; }
+  let html = '';
+  vList.forEach(v => {
+    const oilRows = OIL_COLS.map(o => `<div class="veh-oil-item">
+      <div class="veh-oil-label">${o.label}</div>
+      <div class="veh-oil-val">${v[o.key].toFixed(1)} LTR</div>
+    </div>`).join('');
+    const nextDueItems = OIL_COLS.map(o => {
+      const ls = v.lastByOil[o.label]; if (!ls) return '';
+      const rem = daysDiff(today, new Date(ls.getTime()+(OIL_INTERVALS[o.label]||30)*86400000));
+      let col='var(--green)',bg='var(--green-dim)';
+      if (rem<-30){col='var(--red)';bg='var(--red-dim)';}
+      else if(rem<-15){col='var(--orange)';bg='var(--orange-dim)';}
+      else if(rem<0){col='var(--yellow)';bg='var(--yellow-dim)';}
+      else if(rem<=7){col='var(--blue)';bg='var(--accent-dim)';}
+      return `<span class="veh-next-item" style="background:${bg};color:${col}">${o.label.split(' ')[0]}: ${rem>0?'+':''}${rem}d</span>`;
+    }).filter(Boolean).join('');
+    html += `<div class="veh-card">
+      <div class="veh-name">${v.id}</div>
+      <div class="veh-sub">${v.num} · ${v.entries.length} entries · last: ${fmtDate(v.lastDate)}</div>
+      <div style="margin:10px 0;font-size:.72rem;color:var(--lt2)">
+        Latest Meter: <strong style="color:var(--ltext)">${v.lastMeter||'N/A'}</strong> |
+        Total: <strong style="color:var(--ltext)">${v.totalOil.toFixed(1)} LTR</strong> |
+        Avg/entry: <strong style="color:var(--ltext)">${(v.totalOil/v.entries.length).toFixed(1)} LTR</strong>
+      </div>
+      <div class="veh-oil-grid">${oilRows}</div>
+      <div style="font-size:.72rem;font-weight:700;color:var(--lt2);margin-bottom:6px">Next due (days remaining)</div>
+      <div class="veh-next-row">${nextDueItems||'<span style="font-size:.72rem;color:var(--lt2)">No service data</span>'}</div>
+      <button class="btn-veh-entry" onclick="goToEntry('${v.id}')">+ New Entry for ${v.id}</button>
+    </div>`;
+  });
+  document.getElementById('veh-list').innerHTML = html;
+}
+
+// ── RENDER PREDICTIONS ───────────────────────────────────────
+function generatePredictions() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const preds = [];
+  for (const [,v] of Object.entries(vehicles)) {
+    for (const oil of OIL_COLS) {
+      const lastSvc = v.lastByOil[oil.label]; if (!lastSvc) continue;
+      const oilEntries = v.entries.filter(e=>e[oil.key]>0).sort((a,b)=>a.date-b.date);
+      let avgInterval = OIL_INTERVALS[oil.label]||30;
+      if (oilEntries.length >= 2) {
+        const calc = Math.round(daysDiff(oilEntries[0].date, oilEntries[oilEntries.length-1].date)/(oilEntries.length-1));
+        if (calc >= 7) avgInterval = calc;
+      }
+      const nextDue = new Date(lastSvc.getTime() + avgInterval*86400000);
+      const remaining = daysDiff(today, nextDue);
+      let status = 'ok';
+      if (remaining<-30) status='critical'; else if(remaining<-15) status='high';
+      else if(remaining<0) status='medium'; else if(remaining<=7) status='duesoon';
+      preds.push({ vehicleId:v.id, oilType:oil.label, lastSvc, nextDue, remaining, status, avgInterval, lastMeter:v.lastMeter });
+    }
+  }
+  return preds;
+}
+
+function renderPredict() {
+  const vF = document.getElementById('pf-vehicle').value;
+  const sF = document.getElementById('pf-status').value.toLowerCase().replace(' ','');
+  let preds = generatePredictions();
+  if (vF) preds = preds.filter(p=>p.vehicleId===vF);
+  if (sF) preds = preds.filter(p=>p.status===sF);
+  const ord = {critical:0,high:1,medium:2,duesoon:3,ok:4};
+  preds.sort((a,b)=>ord[a.status]-ord[b.status]||a.remaining-b.remaining);
+  const byVeh = {};
+  preds.forEach(p => { if (!byVeh[p.vehicleId]) byVeh[p.vehicleId]={id:p.vehicleId,items:[]}; byVeh[p.vehicleId].items.push(p); });
+  const vehList = Object.values(byVeh);
+  document.getElementById('pred-count').textContent = `${vehList.length} vehicles`;
+  if (!vehList.length) { document.getElementById('pred-list').innerHTML='<div class="empty-state">No predictions match filters.</div>'; return; }
+  const statusColors = {critical:'var(--red)',high:'var(--orange)',medium:'var(--yellow)',duesoon:'var(--blue)',ok:'var(--green)'};
+  const badgeClass   = {critical:'badge-critical',high:'badge-high',medium:'badge-medium',duesoon:'badge-duesoon',ok:'badge-ok'};
+  let html = '';
+  vehList.forEach(vg => {
+    html += `<div class="pred-card">
+      <div class="pred-header">
+        <div>
+          <div class="pred-veh">${vg.id}</div>
+          <div class="pred-meter">Meter: ${vg.items[0].lastMeter||'N/A'}</div>
+        </div>
+      </div>
+      <table class="pred-table">
+        <thead><tr><td class="pl">Oil Type</td><td class="pl">Last Svc</td><td class="pl">Next Due</td><td class="pl">Rem.</td><td class="pl">Status</td></tr></thead>
+        <tbody>${vg.items.map(p=>`<tr>
+          <td>${p.oilType}</td>
+          <td>${fmtDate(p.lastSvc)}</td>
+          <td>${fmtDate(p.nextDue)}</td>
+          <td style="color:${statusColors[p.status]};font-weight:600">${p.remaining>0?'+':''}${p.remaining}d</td>
+          <td><span class="severity-badge ${badgeClass[p.status]}">${p.status.toUpperCase()}</span></td>
+        </tr>`).join('')}</tbody>
+      </table>
+      <button class="btn-veh-entry" onclick="goToEntry('${vg.id}')">+ New Entry for ${vg.id}</button>
+    </div>`;
+  });
+  document.getElementById('pred-list').innerHTML = html;
+}
+
+// ── NAVIGATION ───────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.dash-page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+tab).classList.add('active');
+  document.getElementById('nav-'+tab).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+// ── EXPORT ───────────────────────────────────────────────────
+function exportCSV() {
+  const headers = ['Date','Car_Name','Car_Number','Hydraulic_Oil(LTR)','Engine_Oil(LTR)','Gear_Oil(LTR)','Transmission_Oil(LTR)','Brake_Oil(LTR)','Grease(LTR)','Meter_Reading'];
+  const rows    = allRows.map(r=>[fmtDate(r.date),r.carName,r.carNum,r.hydraulic,r.engine,r.gear,r.transmission,r.brake,r.grease,r.meter]);
+  const csv     = [headers,...rows].map(r=>r.join(',')).join('\n');
+  downloadFile('fleet_data.csv','text/csv',csv);
+  showToast('CSV exported!','success');
+}
+
+function exportPDF() {
+  const today=new Date(), totalOil=allRows.reduce((s,r)=>s+r.totalOil,0);
+  const counts={critical:0,high:0,medium:0,duesoon:0};
+  allAlerts.forEach(a=>counts[a.severity]++);
+  const vehicleRows=Object.values(vehicles).map(v=>`<tr><td>${v.id}</td><td>${v.entries.length}</td><td>${v.totalOil.toFixed(1)}</td><td>${fmtDate(v.lastDate)}</td><td>${v.lastMeter||'N/A'}</td></tr>`).join('');
+  const html=`<!DOCTYPE html><html><head><style>body{font-family:Arial,sans-serif;font-size:12px;color:#1a1d2e;margin:20px}h1{color:#2563eb;font-size:20px;margin-bottom:4px}h2{color:#6b7280;font-size:14px;margin:20px 0 10px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}.kpi{background:#f0f2f5;padding:12px;border-radius:8px;border-left:4px solid #2563eb}.kpi-v{font-size:22px;font-weight:800;margin:4px 0}table{width:100%;border-collapse:collapse}th{background:#2563eb;color:#fff;padding:6px 10px;text-align:left;font-size:11px}td{padding:5px 10px;border-bottom:1px solid #e4e8f0;font-size:11px}.footer{margin-top:20px;font-size:10px;color:#9ca3af;text-align:center}</style></head><body>
+    <h1>⚙️ MCBL Fleet Analytics Report</h1><p style="color:#6b7280">Generated: ${today.toLocaleString()}</p>
+    <h2>Fleet Summary</h2><div class="grid">
+      <div class="kpi"><div style="font-size:10px;text-transform:uppercase;color:#6b7280">Vehicles</div><div class="kpi-v">${Object.keys(vehicles).length}</div></div>
+      <div class="kpi"><div style="font-size:10px;text-transform:uppercase;color:#6b7280">Records</div><div class="kpi-v">${allRows.length}</div></div>
+      <div class="kpi"><div style="font-size:10px;text-transform:uppercase;color:#6b7280">Total Oil (LTR)</div><div class="kpi-v">${totalOil.toFixed(0)}</div></div>
+      <div class="kpi"><div style="font-size:10px;text-transform:uppercase;color:#6b7280">Est. Cost</div><div class="kpi-v">${CURRENCY}${(totalOil*COST_PER_LITER).toLocaleString()}</div></div>
+    </div>
+    <h2>Alert Summary</h2><div class="grid">
+      <div class="kpi" style="border-left-color:#dc2626"><div style="font-size:10px;color:#6b7280">CRITICAL</div><div class="kpi-v" style="color:#dc2626">${counts.critical}</div></div>
+      <div class="kpi" style="border-left-color:#ea580c"><div style="font-size:10px;color:#6b7280">HIGH</div><div class="kpi-v" style="color:#ea580c">${counts.high}</div></div>
+      <div class="kpi" style="border-left-color:#ca8a04"><div style="font-size:10px;color:#6b7280">MEDIUM</div><div class="kpi-v" style="color:#ca8a04">${counts.medium}</div></div>
+      <div class="kpi" style="border-left-color:#2563eb"><div style="font-size:10px;color:#6b7280">DUE SOON</div><div class="kpi-v" style="color:#2563eb">${counts.duesoon}</div></div>
+    </div>
+    <h2>Vehicle Consumption Profiles</h2>
+    <table><tr><th>Vehicle</th><th>Entries</th><th>Total Oil (LTR)</th><th>Last Service</th><th>Meter</th></tr>${vehicleRows}</table>
+    <div class="footer">MCBL Fleet Analytics · ${today.toLocaleDateString()}</div>
+  </body></html>`;
+  const win=window.open('','_blank');
+  win.document.write(html); win.document.close(); win.print();
+  showToast('PDF report opened!','success');
+}
+
+function downloadFile(name, type, content) {
+  const blob=new Blob([content],{type});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=name; a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function refreshData() {
+  document.getElementById('status-text').textContent='Refreshing…';
+  await loadSheetData();
+  showToast('Data refreshed!','success');
+}
+
+// ════════════════════════════════════════
+// ENTRY FORM LOGIC
+// ════════════════════════════════════════
+const OILS = [
+  { key:'hydraulic',    label:'Hydraulic Oil' },
+  { key:'engine',       label:'Engine Oil' },
+  { key:'gear',         label:'Gear Oil' },
+  { key:'transmission', label:'Transmission Oil' },
+  { key:'brake',        label:'Brake Oil' },
+  { key:'grease',       label:'Grease' },
+];
+
+(function buildOilTable() {
+  const tbl = document.getElementById('oilTable');
+  OILS.forEach(oil => {
+    const tr = document.createElement('tr');
+    const tdName = document.createElement('td');
+    tdName.className = 'oil-name'; tdName.textContent = oil.label;
+    tr.appendChild(tdName);
+    const tdCtrl = document.createElement('td'); tdCtrl.style.cssText = 'width:100%';
+    const strip  = document.createElement('div'); strip.className = 'qstrip';
+    QTY_OPTS.forEach(n => {
+      const b = document.createElement('button');
+      b.className = 'qbtn' + (n===0?' sel':''); b.textContent = n; b.dataset.val = n;
+      b.onclick = () => selectQty(oil.key, n, b);
+      strip.appendChild(b);
+    });
+    const ci = document.createElement('input');
+    ci.type='number'; ci.className='qcustom'; ci.placeholder='Other';
+    ci.min='0'; ci.step='0.5'; ci.id=`custom_${oil.key}`;
+    ci.oninput = () => {
+      strip.querySelectorAll('.qbtn').forEach(b => b.classList.remove('sel'));
+      const v = parseFloat(ci.value);
+      if (!isNaN(v)) strip.querySelectorAll('.qbtn').forEach(b => { if (parseFloat(b.dataset.val)===v) b.classList.add('sel'); });
+    };
+    strip.appendChild(ci); tdCtrl.appendChild(strip); tr.appendChild(tdCtrl); tbl.appendChild(tr);
+  });
+})();
+
+function selectQty(oilKey, val, btn) {
+  const strip = btn.closest('.qstrip');
+  strip.querySelectorAll('.qbtn').forEach(b => b.classList.remove('sel'));
+  btn.classList.add('sel');
+  const ci = document.getElementById(`custom_${oilKey}`);
+  ci.value = val > 0 ? val : '';
+}
+
+function getQty(oilKey) {
+  const ci = document.getElementById(`custom_${oilKey}`);
+  if (ci.value !== '') return parseFloat(ci.value)||0;
+  const sel = ci.closest('.qstrip').querySelector('.qbtn.sel');
+  return sel ? parseFloat(sel.dataset.val) : 0;
+}
+
+let _purpose = '';
+function selectPurpose(val) {
+  _purpose = val;
+  document.getElementById('btn-scheduled').className = 'purpose-btn' + (val==='Scheduled'?' sel-scheduled':'');
+  document.getElementById('btn-loss').className      = 'purpose-btn' + (val==='Loss Oil'?' sel-loss':'');
+}
+
+const VMAP = [
+  {keys:['f','fl','fork','forklift'],        full:'Forklift'},
+  {keys:['dt','dump','dumptruck','truck'],    full:'Dump Truck'},
+  {keys:['p','pl','pay','payloader'],        full:'Payloader'},
+  {keys:['ex','exc','excavator'],            full:'Excavator'},
+  {keys:['sc','school','schoolcar'],         full:'School Car'},
+  {keys:['wp','pump','waterpump'],           full:'Water Pump'},
+  {keys:['noah'],                            full:'Noah'},
+  {keys:['t','tr','troll','trolley'],        full:'Trolley'},
+  {keys:['om','omni'],                       full:'Omni'},
+  {keys:['r','rt','reach','reachtruck'],     full:'Reach Truck'},
+  {keys:['ph','pk','pickup'],               full:'Pickup'},
+  {keys:['hh','human','humanhauler'],       full:'Human Hauler'},
+];
+let _parsedCarName = '', _parsedCarNum = '';
+
+function onVehicleInput() {
+  const raw = document.getElementById('carNameInput').value.trim().toLowerCase().replace(/\s+/g,'');
+  const m   = raw.match(/^([a-z]+)[-_]?(\d+)$/);
+  if (m) {
+    const found = VMAP.find(v => v.keys.includes(m[1]));
+    _parsedCarName = found ? found.full : cap(m[1]);
+    _parsedCarNum  = m[2];
+    document.getElementById('carNumInput').value = _parsedCarNum;
+  } else {
+    const found = VMAP.find(v => v.keys.includes(raw) || v.full.toLowerCase().replace(/\s/g,'')===raw);
+    _parsedCarName = found ? found.full : cap(document.getElementById('carNameInput').value.trim());
+    _parsedCarNum  = document.getElementById('carNumInput').value.trim();
+  }
+  updatePreview();
+}
+
+function onNumInput() { _parsedCarNum = document.getElementById('carNumInput').value.trim(); updatePreview(); }
+function cap(s) { return s.replace(/\b\w/g, c => c.toUpperCase()); }
+
+function updatePreview() {
+  const prev = document.getElementById('vehiclePreview');
+  const txt  = document.getElementById('vehiclePreviewText');
+  if (_parsedCarName) {
+    txt.textContent = _parsedCarNum ? `${_parsedCarName} — #${_parsedCarNum}` : _parsedCarName;
+    prev.className  = 'vehicle-preview ok';
+  } else {
+    txt.textContent = 'type a code above'; prev.className = 'vehicle-preview';
+  }
+}
+
+// CALENDAR
+let calYear, calMonth, calSel = null;
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+function initCal() {
+  const t = new Date(); calYear = t.getFullYear(); calMonth = t.getMonth();
+  calSel  = new Date(t.getFullYear(), t.getMonth(), t.getDate());
+  applyDate(calSel); renderCal();
+}
+function toggleCal() {
+  const pop = document.getElementById('calPopup'), trg = document.getElementById('dateTrigger');
+  pop.classList.contains('open') ? (pop.classList.remove('open'), trg.classList.remove('open'))
+    : (renderCal(), pop.classList.add('open'), trg.classList.add('open'));
+}
+function closeCal() {
+  document.getElementById('calPopup').classList.remove('open');
+  document.getElementById('dateTrigger').classList.remove('open');
+}
+document.addEventListener('click', e => {
+  if (document.getElementById('screen-entry').style.display !== 'none' && !e.target.closest('.date-wrap')) closeCal();
+});
+function calShift(d) { calMonth+=d; if(calMonth>11){calMonth=0;calYear++;} if(calMonth<0){calMonth=11;calYear--;} renderCal(); }
+function renderCal() {
+  document.getElementById('calTitle').textContent = MONTHS[calMonth]+' '+calYear;
+  const grid=document.getElementById('calGrid'), today=new Date();
+  const first=new Date(calYear,calMonth,1).getDay(), days=new Date(calYear,calMonth+1,0).getDate(), prevD=new Date(calYear,calMonth,0).getDate();
+  let h='';
+  for(let i=first-1;i>=0;i--){const d=prevD-i;h+=`<button class="cal-day other" onclick="calPick(${calYear},${calMonth-1},${d})">${d}</button>`;}
+  for(let d=1;d<=days;d++){
+    let c='cal-day';
+    if(today.getFullYear()===calYear&&today.getMonth()===calMonth&&today.getDate()===d)c+=' today';
+    if(calSel&&calSel.getFullYear()===calYear&&calSel.getMonth()===calMonth&&calSel.getDate()===d)c+=' sel';
+    h+=`<button class="${c}" onclick="calPick(${calYear},${calMonth},${d})">${d}</button>`;
+  }
+  const rem=(first+days)%7===0?0:7-(first+days)%7;
+  for(let d=1;d<=rem;d++){h+=`<button class="cal-day other" onclick="calPick(${calYear},${calMonth+1},${d})">${d}</button>`;}
+  grid.innerHTML=h;
+}
+function calPick(y,m,d){calSel=new Date(y,m,d);calYear=calSel.getFullYear();calMonth=calSel.getMonth();applyDate(calSel);renderCal();setTimeout(closeCal,120);}
+function calToday(){const t=new Date();calPick(t.getFullYear(),t.getMonth(),t.getDate());}
+function calClear(){calSel=null;document.getElementById('dateInput').value='';document.getElementById('dateTriggerText').textContent='Select date';renderCal();}
+function applyDate(d){
+  const iso=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  document.getElementById('dateInput').value=iso;
+  document.getElementById('dateTriggerText').textContent=d.toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric'});
+}
+
+// SUBMIT
+async function submitForm() {
+  const date    = document.getElementById('dateInput').value;
+  const carName = _parsedCarName || document.getElementById('carNameInput').value.trim();
+  const carNum  = document.getElementById('carNumInput').value.trim();
+  const meter   = document.getElementById('meterInput').value.trim();
+  if (!date)     { showToast('Please select a date','error'); return; }
+  if (!carName)  { showToast('Enter a vehicle code','error'); return; }
+  if (!carNum)   { showToast('Enter a car number','error'); return; }
+  if (!_purpose) { showToast('Please select a purpose','error'); return; }
+  if (!meter)    { showToast('Enter meter reading','error'); return; }
+  const oils = {};
+  OILS.forEach(o => { oils[o.key] = getQty(o.key); });
+  const btn = document.getElementById('saveBtn');
+  btn.disabled=true; btn.textContent='Saving…';
+  const payload = { action:'saveEntry', data:{ date, carName, carNum, purpose:_purpose, oils, meter } };
+  try {
+    await fetch(GAS_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    btn.disabled=false; btn.textContent='✓ Save Record';
+    showToast('Record saved successfully!','success');
+    resetForm();
+  } catch(e) {
+    btn.disabled=false; btn.textContent='✓ Save Record';
+    showToast('Network error: '+e.message,'error');
+  }
+}
+
+function resetForm() {
+  document.getElementById('carNameInput').value='';
+  document.getElementById('carNumInput').value='';
+  document.getElementById('meterInput').value='';
+  _parsedCarName=''; _parsedCarNum=''; _purpose='';
+  document.getElementById('vehiclePreview').className='vehicle-preview';
+  document.getElementById('vehiclePreviewText').textContent='type a code above';
+  document.getElementById('btn-scheduled').className='purpose-btn';
+  document.getElementById('btn-loss').className='purpose-btn';
+  OILS.forEach(o => {
+    const strip = document.getElementById(`custom_${o.key}`).closest('.qstrip');
+    strip.querySelectorAll('.qbtn').forEach(b=>b.classList.toggle('sel',b.dataset.val==='0'));
+    document.getElementById(`custom_${o.key}`).value='';
+  });
+  calSel=null; initCal();
+}
+
+// ── SHARED TOAST ─────────────────────────────────────────────
+let _tt;
+function showToast(msg, type='success') {
+  const el  = document.getElementById('toast');
+  const msg2 = document.getElementById('toastMsg');
+  const isEntry = document.getElementById('screen-entry').style.display !== 'none';
+  msg2.textContent = msg;
+  // build class list
+  let cls = 'show ';
+  cls += isEntry ? 't-dark ' : 't-light ';
+  cls += type === 'error' ? 't-error' : 't-success';
+  el.className = cls;
+  clearTimeout(_tt);
+  _tt = setTimeout(() => el.className='', 3500);
+}
+
+// ── INIT ─────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadSheetData();
+});
+</script>
+</body>
+</html>
